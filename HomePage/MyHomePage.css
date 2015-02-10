@@ -1,0 +1,15 @@
+html{
+    background-image: url(mainBackground.jpg);
+    background-size: cover;
+}
+
+.heading{
+ font-family: monospace;   
+}
+
+.navigate {
+    font-size: 25px; 
+    font-family: cursive;
+}
+
+
