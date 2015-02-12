@@ -17,9 +17,15 @@ SaturnApp.prototype.init = function(param)
     var saturn = new Saturn();
     saturn.init();
     this.addObject(saturn);
+    
+    // Let there be light!
+    var sun = new Sun();
+    sun.init();
+    this.addObject(sun);
 }
 
-// Custom Earth class
+
+// Custom Saturn class
 Saturn = function()
 {
 	Sim.Object.call(this);
@@ -27,27 +33,58 @@ Saturn = function()
 
 Saturn.prototype = new Sim.Object();
 
-Saturn.prototype.init = function()
+Saturn.prototype.init = function(param)
 {
-    // Create our Earth with nice texture
+	param = param || {};
+	
+    // Create an orbit group to simulate the orbit - this is the top-level Saturn group
+    var planetOrbitGroup = new THREE.Object3D();
+    
+    // Tell the framework about our object
+    this.setObject3D(planetOrbitGroup);
+
+    // Create a group to contain Saturn and Clouds meshes
+    var planetGroup = new THREE.Object3D();
+    var distance = param.distance || 0;
+    var distsquared = distance * distance;
+    planetGroup.position.set(Math.sqrt(distsquared/2), 0, -Math.sqrt(distsquared/2));
+    planetOrbitGroup.add(planetGroup);
+    
+    this.planetGroup = planetGroup;
+    var size = param.size || 1;
+    this.planetGroup.scale.set(size, size, size);
+
+    this.planetGroup.rotation.x = Saturn.TILT;
+
+	this.createGlobe();
+	this.createRings();
+
+	this.animateOrbit = param.animateOrbit;
+	this.period = param.period;
+	this.revolutionSpeed = param.revolutionSpeed ? param.revolutionSpeed : Saturn.REVOLUTION_Y;
+}
+
+Saturn.prototype.createGlobe = function(map)
+{
+    // Create our Saturn with nice texture
     var saturnmap = "../images/saturn_bjoernjonsson.jpg";
     var geometry = new THREE.SphereGeometry(1, 32, 32);
     var texture = THREE.ImageUtils.loadTexture(saturnmap);
-    var material = new THREE.MeshBasicMaterial( { map: texture } );
-    var mesh = new THREE.Mesh( geometry, material ); 
+    var material = new THREE.MeshPhongMaterial( {map: texture} );
+    var globeMesh = new THREE.Mesh( geometry, material ); 
 
-    // Let's work in the tilt
-    mesh.rotation.x = Saturn.TILT;
-    
-    // Tell the framework about our object
-    this.setObject3D(mesh);    
+    // Add it to our group
+    this.planetGroup.add(globeMesh);
+	
+    // Save it away so we can rotate it
+    this.globeMesh = globeMesh;
 }
 
 Saturn.prototype.createRings = function()
 {
     // Create our Saturn with nice texture
     var ringsmap = "../images/SatRing.png";
-    var geometry = new Saturn.Rings(0, 1.867, 64);
+    var geometry = new Saturn.Rings(1.1, 1.867, 64);
     
     var texture = THREE.ImageUtils.loadTexture(ringsmap);
     var material = new THREE.MeshLambertMaterial( {map: texture, transparent:true, ambient:0xffffff } );
@@ -63,10 +100,18 @@ Saturn.prototype.createRings = function()
 }
 
 Saturn.prototype.update = function()
-{
-	// "I feel Saturn move..."
-	this.object3D.rotation.y += Saturn.ROTATION_Y;
+{	
+	// Simulate the orbit
+	if (this.animateOrbit)
+	{
+		this.object3D.rotation.y += this.revolutionSpeed / this.period;
+	}
+	
+	Sim.Object.prototype.update.call(this);
 }
+
+Saturn.TILT = -0.466;
+Saturn.REVOLUTION_Y = 0.003;
 
 // The rings
 Saturn.Rings = function ( innerRadius, outerRadius, nSegments ) {
@@ -131,5 +176,20 @@ Saturn.Rings.prototype = new THREE.Geometry();
 Saturn.Rings.prototype.constructor = Saturn.Rings;
 
 
-Saturn.ROTATION_Y = 0.003;
-Saturn.TILT = -0.466;
+// Custom Sun class
+Sun = function()
+{
+	Sim.Object.call(this);
+}
+
+Sun.prototype = new Sim.Object();
+
+Sun.prototype.init = function()
+{
+    // Create a point light to show off the earth - set the light out back and to left a bit
+	var light = new THREE.PointLight( 0xffffff, 2, 100);
+	light.position.set(-10, 0, 20);
+    
+    // Tell the framework about our object
+    this.setObject3D(light);    
+}
